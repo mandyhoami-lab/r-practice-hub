@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R Practice Hub — STAT 200</title>
+<meta name="description" content="Flashcards, typing drills, quizzes, a real R console, and etymology tables for learning R.">
+<style>
+:root{
+  --bg:#0A0C0A; --card-bg:#0E130F; --ink:#F2ECDC; --dim:rgba(242,236,220,0.62);
+  --line:rgba(242,236,220,0.16); --green:#7FB069; --tag:#E8A0B8;
+  --body:'Nunito',system-ui,sans-serif; --display:'Pixelify Sans',monospace; --micro:'VT323',monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);margin:0;padding:1.2rem;line-height:1.55}
+a{color:var(--tag)}
+header{text-align:center;margin-bottom:1.5rem}
+header h1{font-family:var(--display);font-size:2rem;margin:0 0 0.3rem}
+header p{color:var(--dim);margin:0}
+footer{text-align:center;color:var(--dim);font-size:0.85rem;margin-top:2rem}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&family=Pixelify+Sans:wght@600&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="stat200.css">
+<link rel="stylesheet" href="flashcards.css">
+</head>
+<body>
+<header>
+  <h1>R Practice Hub</h1>
+  <p>drills, quizzes, and an R console for each unit.</p>
+</header>
+<main>
+  <div class="s2-wrap">
+    <p class="s2-label">concept to practice</p>
+    <div class="s2-units" id="s2-units" role="group" aria-label="concept to practice"></div>
+    <p class="s2-label">practice mode</p>
+    <div class="s2-modes" id="s2-modes" role="group" aria-label="practice mode">
+      <button type="button" class="s2-mode is-active" data-mode="flash">Flashcards</button>
+      <button type="button" class="s2-mode" data-mode="typing">Typing</button>
+      <button type="button" data-mode="quiz" class="s2-mode">Quiz</button>
+      <button type="button" class="s2-mode" data-mode="code">Code lab</button>
+      <button type="button" class="s2-mode" data-mode="etym">Etymology</button>
+    </div>
+    <div class="s2-stage" id="s2-stage"></div>
+  </div>
+</main>
+<footer>
+  <p>built for STAT 200 (Intro to Data Science with R) · <a href="https://amandata.dev/stat200-practice.html">live on amandata.dev</a></p>
+</footer>
+<script src="stat200-data.js"></script>
+<script src="stat200-drills.js"></script>
+<script src="stat200-quiz.js"></script>
+<script src="stat200-code.js"></script>
+<script>
+(function(){
+  "use strict";
+  var unitsEl = document.getElementById("s2-units");
+  var stage = document.getElementById("s2-stage");
+  var currentUnit = 0, currentMode = "flash";
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function renderUnits(){
+    unitsEl.innerHTML = "";
+    window.STAT200.units.forEach(function(u, i){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "s2-unit" + (i === currentUnit ? " is-active" : "");
+      b.textContent = u.title;
+      b.addEventListener("click", function(){ currentUnit = i; renderUnits(); renderStage(); });
+      unitsEl.appendChild(b);
+    });
+  }
+  function renderStage(){
+    var unit = window.STAT200.units[currentUnit];
+    if (currentMode === "flash") renderFlash(unit);
+    else if (currentMode === "typing") window.StatDrills.init(stage, unit.typing);
+    else if (currentMode === "quiz") window.StatQuiz.init(stage, unit.quiz);
+    else if (currentMode === "code") window.StatCode.init(stage);
+    else renderEtym(unit);
+  }
+  function renderFlash(unit){
+    var cards = unit.flashcards.slice();
+    for (var i = cards.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = cards[i]; cards[i] = cards[j]; cards[j] = t;
+    }
+    var idx = 0;
+    stage.innerHTML =
+      '<div class="fc-wrap"><div class="fc-head"><h1 class="fc-title">' + esc(unit.title) + '</h1>' +
+      '<div class="fc-sub">' + cards.length + ' cards · tap to flip</div></div>' +
+      '<div class="fc-progress"><div class="fc-bar"><div style="width:0%"></div></div>' +
+      '<div class="fc-ptext"></div></div>' +
+      '<div class="fc-deck"><div class="fc-card" tabindex="0"><div class="fc-inner">' +
+      '<div class="fc-face"><div class="fc-tag"></div><div class="fc-term"></div></div>' +
+      '<div class="fc-face back"><div class="fc-def"></div></div>' +
+      '</div></div></div>' +
+      '<div class="fc-grade"><button type="button" data-nav="prev">&larr; prev</button>' +
+      '<button type="button" data-nav="next">next &rarr;</button></div></div>';
+    var card = stage.querySelector(".fc-card");
+    function show(){
+      card.classList.remove("flipped");
+      stage.querySelector(".fc-tag").textContent = cards[idx].tag;
+      stage.querySelector(".fc-term").textContent = cards[idx].term;
+      stage.querySelector(".fc-def").textContent = cards[idx].def;
+      stage.querySelector(".fc-bar > div").style.width = ((idx + 1) / cards.length * 100) + "%";
+      stage.querySelector(".fc-ptext").textContent = "card " + (idx + 1) + " of " + cards.length;
+    }
+    card.addEventListener("click", function(){ card.classList.toggle("flipped"); });
+    stage.querySelector('[data-nav="prev"]').addEventListener("click", function(e){
+      e.stopPropagation(); idx = (idx - 1 + cards.length) % cards.length; show();
+    });
+    stage.querySelector('[data-nav="next"]').addEventListener("click", function(e){
+      e.stopPropagation(); idx = (idx + 1) % cards.length; show();
+    });
+    show();
+  }
+  function renderEtym(unit){
+    var html = '<table class="etym-table"><tr><th>term</th><th>origin</th><th>note</th></tr>';
+    unit.etymology.forEach(function(e){
+      html += "<tr><td>" + esc(e.term) + "</td><td>" + esc(e.origin) + "</td><td>" + esc(e.note) + "</td></tr>";
+    });
+    stage.innerHTML = html + "</table>";
+  }
+  document.querySelectorAll(".s2-mode").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll(".s2-mode").forEach(function(x){ x.classList.remove("is-active"); });
+      b.classList.add("is-active");
+      currentMode = b.getAttribute("data-mode") || "flash";
+      renderStage();
+    });
+  });
+  renderUnits();
+  renderStage();
+})();
+</script>
+</body>
+</html>
